@@ -1,0 +1,27 @@
+[
+  {
+    "id": "room-1",
+    "name": "Kamar Mandi 1",
+    "ip": "192.168.1.100",
+    "source": "SIM",
+    "mode": "ON",
+    "detections": 1,
+    "online": true,
+    "lamp": true,
+    "presence": false,
+    "stateSince": 1793086781725.6418
+  },
+  {
+    "id": "room-1793085525937",
+    "name": "Ruang 1",
+    "ip": "10.167.254.141",
+    "source": "LIVE",
+    "mode": "AUTO",
+    "detections": 2,
+    "online": false,
+    "presence": true,
+    "lamp": true,
+    "rssi": -64,
+    "stateSince": 1793086426594.302
+  }
+]

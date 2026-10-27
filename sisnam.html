@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sisnam - Multi-Room Monitor</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --panel: #111827;
+      --border: #1f2937;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --blue: #3b82f6;
+      --red: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 1.25rem;
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      padding-bottom: 1rem;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand { display: flex; align-items: baseline; gap: 0.75rem; }
+    h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; }
+    .subtitle { font-size: 0.8rem; color: var(--muted); }
+    
+    .nav-tabs {
+      display: flex;
+      gap: 0.4rem;
+      background: var(--panel);
+      padding: 0.3rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    .nav-tabs button {
+      border: none;
+      background: transparent;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      border-radius: 4px;
+    }
+    .nav-tabs button.active {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    input, select, button {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.65rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-family: inherit;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--blue); }
+    button { cursor: pointer; font-weight: 500; transition: background 0.15s, border-color 0.15s; }
+    button:hover { background: #1f2937; }
+    button.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    button.primary:hover { opacity: 0.9; }
+    button.danger { color: var(--red); border-color: rgba(239, 68, 68, 0.3); }
+    button.danger:hover { background: rgba(239, 68, 68, 0.1); }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--panel);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-bottom: 1.25rem;
+    }
+    .add-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .conn-cfg {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .rooms-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.15rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+    }
+    .room-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.75rem;
+    }
+    .room-name { font-size: 1.05rem; font-weight: 700; }
+    .room-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+    .dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .dot.error { background: var(--red); }
+    .dot.sim { background: var(--blue); }
+
+    .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.65rem;
+    }
+    .status-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .box-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+    }
+    .box-val {
+      font-size: 1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .val-amber { color: var(--amber); }
+    .val-green { color: var(--green); }
+    .val-muted { color: var(--muted); }
+
+    .sim-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px dashed rgba(59, 130, 246, 0.35);
+      padding: 0.45rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+    }
+
+    .mode-group {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.35rem;
+      background: var(--bg);
+      padding: 0.25rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    .mode-group button { border: none; padding: 0.4rem; font-size: 0.75rem; }
+    .mode-group button.active { background: var(--blue); color: #fff; }
+
+    .room-footer {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      padding-top: 0.65rem;
+    }
+
+    .hidden { display: none !important; }
+    .log-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .table-wrap {
+      max-height: 220px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: left; }
+    th {
+      background: var(--panel);
+      color: var(--muted);
+      padding: 0.5rem 0.75rem;
+      position: sticky;
+      top: 0;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    .badge {
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .badge-amber { background: rgba(245, 158, 11, 0.15); color: var(--amber); }
+    .badge-green { background: rgba(16, 185, 129, 0.15); color: var(--green); }
+    .badge-muted { background: #1f2937; color: var(--muted); }
+
+    /* Halaman Tutorial */
+    .guide-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .guide-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+    }
+    .guide-card h2 {
+      font-size: 1.05rem;
+      margin-bottom: 0.75rem;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+    .step-list {
+      margin-left: 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: #d1d5db;
+    }
+    .step-list li strong { color: #fff; }
+    .pin-table {
+      width: 100%;
+      margin-top: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .code-wrap {
+      position: relative;
+      margin-top: 0.75rem;
+    }
+    pre {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      overflow-x: auto;
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: #e5e7eb;
+      max-height: 420px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>Sisnam</h1>
+      <span class="subtitle">Multi-Room Monitoring & Kontrol Lampu (ESP32)</span>
+    </div>
+    <div class="nav-tabs">
+      <button id="tabBtnMonitor" class="active">Dashboard Ruangan</button>
+      <button id="tabBtnGuide">Tutorial & Kode .ino</button>
+    </div>
+  </header>
+
+  <!-- VIEW 1: DASHBOARD MONITORING -->
+  <div id="viewMonitor">
+    <div class="toolbar">
+      <form id="addRoomForm" class="add-form">
+        <input type="text" id="inputRoomName" placeholder="Nama Ruangan (mis. Kamar Mandi 1)" required style="width: 210px;">
+        <input type="text" id="inputRoomIp" class="mono" placeholder="IP ESP32 (mis. 192.168.1.101)" required style="width: 195px;">
+        <select id="inputRoomSource">
+          <option value="LIVE">ESP32 Live</option>
+          <option value="SIM">Simulasi</option>
+        </select>
+        <button type="submit" class="primary">+ Tambah Ruangan</button>
+      </form>
+    </div>
+
+    <div id="roomsContainer" class="rooms-grid"></div>
+
+    <!-- Panel Log Aktivitas Global -->
+    <div class="card">
+      <div class="log-header">
+        <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);">Riwayat Aktivitas Semua Ruangan</span>
+        <button id="btnClearLog" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Bersihkan Log</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Waktu</th>
+              <th>Ruangan</th>
+              <th>IP / Mode</th>
+              <th>Status Ruangan</th>
+              <th>Lampu</th>
+              <th>Keterangan</th>
+            </tr>
+          </thead>
+          <tbody id="logBody" class="mono">
+            <tr><td colspan="6" style="text-align: center; color: var(--muted);">Belum ada aktivitas</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 2: TUTORIAL & KODE .INO -->
+  <div id="viewGuide" class="guide-section hidden">
+    <div class="guide-card">
+      <h2>1. Skema Rangkaian Hardware (Wiring per ESP32)</h2>
+      <p style="font-size: 0.85rem; color: var(--muted); margin-bottom: 0.5rem;">Rangkai sensor radar mmWave HLK-LD2410C dan modul Relay pada masing-masing board ESP32 sesuai tabel pin berikut:</p>
+      <table class="pin-table">
+        <thead>
+          <tr>
+            <th>Komponen</th>
+            <th>Pin Komponen</th>
+            <th>Pin ESP32</th>
+            <th>Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>HLK-LD2410C</strong></td>
+            <td class="mono">VCC, GND, OUT</td>
+            <td class="mono">5V (VIN), GND, GPIO 22</td>
+            <td>Pin OUT memberikan logika HIGH (3.3V) saat mendeteksi keberadaan manusia</td>
+          </tr>
+          <tr>
+            <td><strong>Modul Relay</strong></td>
+            <td class="mono">VCC, GND, IN</td>
+            <td class="mono">5V (VIN), GND, GPIO 23</td>
+            <td>Default kode menggunakan tipe <em>Active LOW</em> (<code class="mono">RELAY_ON = LOW</code>)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="guide-card">
+      <h2>2. Cara Upload Kode .ino ke ESP32 (Arduino IDE)</h2>
+      <ol class="step-list">
+        <li><strong>Instal Board ESP32:</strong> Buka Arduino IDE &rarr; masuk ke <em>File &gt; Preferences</em> &rarr; tambahkan URL board ESP32 Expressif di <em>Additional Boards Manager URLs</em>, lalu instal package <strong>esp32 by Espressif Systems</strong> melalui menu <em>Tools &gt; Board &gt; Boards Manager</em>.</li>
+        <li><strong>Salin Kode Firmware:</strong> Buat sketch baru, hapus isinya, dan tempelkan kode <code class="mono">sisnam_esp32.ino</code> di bawah.</li>
+        <li><strong>Sesuaikan WiFi:</strong> Ubah nilai variabel <code class="mono">ssid</code> dan <code class="mono">pass</code> pada baris konfigurasi agar sama dengan jaringan WiFi/Hotspot tempat laptop/PC Anda terhubung.</li>
+        <li><strong>Pilih Board & Port:</strong> Hubungkan ESP32 ke PC dengan kabel USB data. Pilih <em>Tools &gt; Board &gt; ESP32 Arduino &gt; DOIT ESP32 DEVKIT V1</em> (atau tipe board ESP32 yang sesuai) dan pilih <em>Port</em> COM yang terdeteksi.</li>
+        <li><strong>Upload & Cek IP Address:</strong> Klik tombol <strong>Upload</strong>. Setelah selesai, buka <em>Tools &gt; Serial Monitor</em> dan atur baud rate ke <strong>115200</strong>. Tekan tombol <strong>EN / RST</strong> di ESP32, lalu catat alamat IP yang muncul (contoh: <code class="mono">192.168.1.105</code>).</li>
+        <li><strong>Untuk Banyak Ruangan:</strong> Ulangi proses upload ke ESP32 kedua, ketiga, dst. menggunakan nama WiFi yang sama. Setiap ESP32 akan mendapatkan IP unik dari router.</li>
+      </ol>
+
+      <div class="code-wrap">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+          <span class="mono" style="font-size: 0.75rem; color: var(--muted);">sisnam_esp32.ino</span>
+          <button id="btnCopyIno" class="primary" style="padding: 0.3rem 0.7rem; font-size: 0.75rem;">Salin Kode .ino</button>
+        </div>
+        <pre><code id="inoCodeBlock" class="mono">// ============================================================================
+// SISNAM - Sistem Monitoring & Kontrol Kamar Mandi Pintar (ESP32)
+// Sensor Kehadiran Radar mmWave HLK-LD2410C (GPIO 22) + Relay Lampu (GPIO 23)
+// Kelompok 8 - Mendukung Endpoint /status & /control?mode=AUTO|ON|OFF
+// ============================================================================
+
+#include &lt;WiFi.h&gt;
+#include &lt;WebServer.h&gt;
+
+// --- KONFIGURASI WIFI ---
+const char* ssid = "vanity";
+const char* pass = "gatauluoa";
+
+// --- KONFIGURASI PIN ---
+const int sensorPin = 22; // Pin OUT dari HLK-LD2410C ke GPIO 22
+const int relayPin  = 23; // Pin IN Relay Lampu (Silakan ubah sesuai rangkaian Anda)
+
+// Konfigurasi Tipe Relay (Kebanyakan modul relay di pasaran aktif saat diberi logika LOW)
+// Ubah menjadi HIGH jika relay Anda aktif saat diberi logika HIGH
+const int RELAY_ON  = LOW;
+const int RELAY_OFF = HIGH;
+
+// --- VARIABEL STATUS SISTEM ---
+// Mode: 0 = AUTO (Ikut Sensor), 1 = MANUAL ON (Paksa Nyala), 2 = MANUAL OFF (Paksa Mati)
+int systemMode = 0; 
+bool adaOrang = false;
+bool lampuMenyala = false;
+
+WebServer server(80);
+
+// Fungsi untuk menyinkronkan kondisi Relay berdasarkan Mode & Sensor
+void updateRelayState() {
+  if (systemMode == 0) {
+    // Mode Otomatis: Mengikuti pembacaan sensor radar HLK-LD2410C
+    lampuMenyala = adaOrang;
+  } else if (systemMode == 1) {
+    // Mode Paksa ON
+    lampuMenyala = true;
+  } else if (systemMode == 2) {
+    // Mode Paksa OFF
+    lampuMenyala = false;
+  }
+
+  digitalWrite(relayPin, lampuMenyala ? RELAY_ON : RELAY_OFF);
+}
+
+// Endpoint GET /status -&gt; Mengirim data ke Aplikasi Python / Web dalam format JSON
+void handleStatus() {
+  String modeStr = "AUTO";
+  if (systemMode == 1) modeStr = "MANUAL_ON";
+  else if (systemMode == 2) modeStr = "MANUAL_OFF";
+
+  String json = "{";
+  json += "\"presence\":" + String(adaOrang ? "true" : "false") + ",";
+  json += "\"lamp\":" + String(lampuMenyala ? "true" : "false") + ",";
+  json += "\"mode\":\"" + modeStr + "\",";
+  json += "\"rssi\":" + String(WiFi.RSSI()) + ",";
+  json += "\"ip\":\"" + WiFi.localIP().toString() + "\"";
+  json += "}";
+
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.send(200, "application/json", json);
+}
+
+// Endpoint GET /control?mode=... -&gt; Menerima perintah dari tombol Aplikasi Python / Web
+void handleControl() {
+  if (server.hasArg("mode")) {
+    String reqMode = server.arg("mode");
+    if (reqMode == "AUTO") {
+      systemMode = 0;
+      Serial.println("Mode diubah ke: OTOMATIS (Sensor)");
+    } else if (reqMode == "ON") {
+      systemMode = 1;
+      Serial.println("Mode diubah ke: MANUAL ON (Paksa Nyala)");
+    } else if (reqMode == "OFF") {
+      systemMode = 2;
+      Serial.println("Mode diubah ke: MANUAL OFF (Paksa Mati)");
+    }
+    updateRelayState();
+    handleStatus(); // Kembalikan status terbaru
+  } else {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.send(400, "text/plain", "Parameter 'mode' diperlukan");
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  // Pin sensor menggunakan INPUT_PULLDOWN agar tidak floating
+  pinMode(sensorPin, INPUT_PULLDOWN);
+  
+  // Set pin relay sebagai OUTPUT dan matikan di awal
+  pinMode(relayPin, OUTPUT);
+  digitalWrite(relayPin, RELAY_OFF);
+
+  Serial.println("\nMenghubungkan ke WiFi: " + String(ssid));
+  WiFi.begin(ssid, pass);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nBerhasil terhubung ke WiFi!");
+  Serial.print("IP Address ESP32 (Masukkan ke Aplikasi Python/Web): ");
+  Serial.println(WiFi.localIP());
+
+  // Daftarkan rute Web Server
+  server.on("/status", HTTP_GET, handleStatus);
+  server.on("/control", HTTP_GET, handleControl);
+  server.begin();
+  Serial.println("HTTP Server Lokal Aktif!");
+}
+
+void loop() {
+  server.handleClient();
+
+  // Baca output digital dari pin OUT sensor HLK-LD2410C
+  int bacaSensor = digitalRead(sensorPin);
+  bool statusSekarang = (bacaSensor == HIGH);
+
+  // Jika terjadi perubahan deteksi keberadaan
+  if (statusSekarang != adaOrang) {
+    adaOrang = statusSekarang;
+    if (adaOrang) {
+      Serial.println("Sensor Radar -&gt; Ada Orang!");
+    } else {
+      Serial.println("Sensor Radar -&gt; Ruangan Kosong");
+    }
+  }
+
+  // Terapkan logika ke relay
+  updateRelayState();
+  delay(20);
+}</code></pre>
+      </div>
+    </div>
+
+    <div class="guide-card">
+      <h2>3. Cara Menjalankan Sistem & Monitoring Multi-Ruangan</h2>
+      <ol class="step-list">
+        <li><strong>Tanpa Edit Kode IP:</strong> Anda tidak perlu menulis IP ESP32 di dalam file HTML maupun di dalam <code class="mono">web_bridge.py</code>. Semua penambahan dan pengeditan IP dilakukan langsung dari form di halaman <strong>Dashboard Ruangan</strong>.</li>
+        <li><strong>Opsi A — Buka Langsung (<code class="mono">sisnam.html</code>):</strong> Klik 2x file <code class="mono">sisnam.html</code> di browser. Pastikan opsi <em>Metode Akses</em> di kanan atas disetel ke <strong>Direct HTTP (Langsung ke IP ESP32)</strong>. Karena kode <code class="mono">.ino</code> sudah menyertakan header <code class="mono">Access-Control-Allow-Origin: *</code>, browser dapat langsung mengambil data ke masing-masing IP ESP32.</li>
+        <li><strong>Opsi B — Lewat Server Python (<code class="mono">web_bridge.py</code>):</strong> Jalankan <code class="mono">python web_bridge.py</code> di terminal, lalu buka <code class="mono">http://localhost:8080</code>. Anda dapat memilih metode akses <strong>Via Proxy (web_bridge.py)</strong> yang akan meneruskan request ke IP masing-masing ruangan secara dinamis (<code class="mono">/status?ip=192.168.x.x</code>).</li>
+        <li><strong>Menambahkan Ruangan:</strong> Masukkan <em>Nama Ruangan</em> (misal: Kamar Mandi Lt. 1), ketik <em>IP ESP32</em> yang tampil di Serial Monitor, pilih mode <strong>ESP32 Live</strong> (atau <strong>Simulasi</strong> jika ingin menguji UI tanpa alat), lalu klik <strong>+ Tambah Ruangan</strong>. Data daftar ruangan otomatis tersimpan di <code class="mono">localStorage</code> browser.</li>
+      </ol>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const state = { rooms: [], logs: [] };
+      const prevStates = {};
+      let initialized = false;
+
+      const el = {
+        tabBtnMonitor: document.getElementById('tabBtnMonitor'),
+        tabBtnGuide: document.getElementById('tabBtnGuide'),
+        viewMonitor: document.getElementById('viewMonitor'),
+        viewGuide: document.getElementById('viewGuide'),
+        addRoomForm: document.getElementById('addRoomForm'),
+        inputRoomName: document.getElementById('inputRoomName'),
+        inputRoomIp: document.getElementById('inputRoomIp'),
+        inputRoomSource: document.getElementById('inputRoomSource'),
+        roomsContainer: document.getElementById('roomsContainer'),
+        logBody: document.getElementById('logBody'),
+        btnClearLog: document.getElementById('btnClearLog'),
+        btnCopyIno: document.getElementById('btnCopyIno'),
+        inoCodeBlock: document.getElementById('inoCodeBlock')
+      };
+
+      function formatDuration(ms) {
+        const s = Math.max(0, Math.floor(ms / 1000));
+        const h = String(Math.floor(s / 3600)).padStart(2, '0');
+        const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+        const sec = String(s % 60).padStart(2, '0');
+        return `${h}:${m}:${sec}`;
+      }
+
+      function escapeHtml(str) {
+        return String(str).replace(/[&<>"']/g, s => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[s]));
+      }
+
+      function addLog(room, note) {
+        const time = new Date().toTimeString().split(' ')[0];
+        state.logs.unshift({
+          time,
+          roomName: room.name,
+          ip: room.source === 'SIM' ? 'SIMULASI' : room.ip,
+          presence: room.presence,
+          lamp: room.lamp,
+          note
+        });
+        if (state.logs.length > 60) state.logs.pop();
+        renderLogs();
+      }
+
+      function renderLogs() {
+        if (state.logs.length === 0) {
+          el.logBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">Belum ada aktivitas</td></tr>';
+          return;
+        }
+        el.logBody.innerHTML = state.logs.map(row => `
+          <tr>
+            <td>${row.time}</td>
+            <td style="font-family: system-ui; font-weight: 600;">${escapeHtml(row.roomName)}</td>
+            <td>${escapeHtml(row.ip)}</td>
+            <td><span class="badge ${row.presence ? 'badge-amber' : 'badge-green'}">${row.presence ? 'TERISI' : 'KOSONG'}</span></td>
+            <td><span class="badge ${row.lamp ? 'badge-amber' : 'badge-muted'}">${row.lamp ? 'ON' : 'OFF'}</span></td>
+            <td style="font-family: system-ui;">${escapeHtml(row.note)}</td>
+          </tr>
+        `).join('');
+      }
+
+      function renderAllRooms() {
+        if (state.rooms.length === 0) {
+          el.roomsContainer.innerHTML = `
+            <div class="card" style="grid-column: 1 / -1; text-align: center; color: var(--muted); padding: 2rem;">
+              Belum ada ruangan. Gunakan form di atas untuk menambahkan ESP32.
+            </div>
+          `;
+          return;
+        }
+        el.roomsContainer.innerHTML = state.rooms.map(room => `
+          <div class="card" id="card-${room.id}">
+            <div class="room-top">
+              <div>
+                <div class="room-name">${escapeHtml(room.name)}</div>
+                <div class="room-meta">
+                  <span class="dot" id="dot-${room.id}"></span>
+                  <span id="conn-${room.id}">Memeriksa...</span>
+                  <span>&bull;</span>
+                  <span class="mono" id="ip-label-${room.id}">${escapeHtml(room.ip)}</span>
+                </div>
+              </div>
+              <div style="display: flex; gap: 0.35rem; align-items: center;">
+                <select data-action="source" data-id="${room.id}" style="padding: 0.25rem 0.45rem; font-size: 0.75rem;">
+                  <option value="LIVE" ${room.source === 'LIVE' ? 'selected' : ''}>ESP32 Live</option>
+                  <option value="SIM" ${room.source === 'SIM' ? 'selected' : ''}>Simulasi</option>
+                </select>
+                <button data-action="edit-ip" data-id="${room.id}" title="Ubah IP / Nama" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Edit</button>
+                <button class="danger" data-action="delete" data-id="${room.id}" title="Hapus Ruangan" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Hapus</button>
+              </div>
+            </div>
+
+            <div id="simbar-${room.id}" class="sim-controls ${room.source === 'SIM' ? '' : 'hidden'}">
+              <span>Simulasi Sensor Radar:</span>
+              <div style="display: flex; gap: 0.35rem;">
+                <button data-action="sim-high" data-id="${room.id}" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;">Ada Orang (HIGH)</button>
+                <button data-action="sim-low" data-id="${room.id}" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;">Kosong (LOW)</button>
+              </div>
+            </div>
+
+            <div class="status-row">
+              <div class="status-box">
+                <div class="box-label">
+                  <span>Radar LD2410C</span>
+                  <span class="mono" id="gpio-radar-${room.id}">GPIO 22</span>
+                </div>
+                <div class="box-val" id="occ-val-${room.id}">Kosong</div>
+              </div>
+              <div class="status-box">
+                <div class="box-label">
+                  <span>Relay Lampu</span>
+                  <span class="mono" id="gpio-relay-${room.id}">GPIO 23</span>
+                </div>
+                <div class="box-val" id="lamp-val-${room.id}">Lampu OFF</div>
+              </div>
+            </div>
+
+            <div class="mode-group">
+              <button data-action="mode" data-mode="AUTO" data-id="${room.id}" id="btn-auto-${room.id}">Otomatis</button>
+              <button data-action="mode" data-mode="ON" data-id="${room.id}" id="btn-on-${room.id}">Paksa ON</button>
+              <button data-action="mode" data-mode="OFF" data-id="${room.id}" id="btn-off-${room.id}">Paksa OFF</button>
+            </div>
+
+            <div class="room-footer">
+              <span>Durasi: <strong class="mono" id="dur-${room.id}" style="color: var(--text);">00:00:00</strong></span>
+              <span>Terdeteksi: <strong class="mono" id="det-${room.id}" style="color: var(--text);">0x</strong></span>
+            </div>
+          </div>
+        `).join('');
+        state.rooms.forEach(room => updateRoomCardDOM(room));
+      }
+
+      function updateRoomCardDOM(room) {
+        const dotEl = document.getElementById(`dot-${room.id}`);
+        if (!dotEl) return;
+        const connEl = document.getElementById(`conn-${room.id}`);
+        const simBar = document.getElementById(`simbar-${room.id}`);
+        const occVal = document.getElementById(`occ-val-${room.id}`);
+        const gpioRadar = document.getElementById(`gpio-radar-${room.id}`);
+        const gpioRelay = document.getElementById(`gpio-relay-${room.id}`);
+        const lampVal = document.getElementById(`lamp-val-${room.id}`);
+        const btnAuto = document.getElementById(`btn-auto-${room.id}`);
+        const btnOn = document.getElementById(`btn-on-${room.id}`);
+        const btnOff = document.getElementById(`btn-off-${room.id}`);
+        const durEl = document.getElementById(`dur-${room.id}`);
+        const detEl = document.getElementById(`det-${room.id}`);
+
+        if (room.source === 'SIM') {
+          dotEl.className = 'dot sim';
+          connEl.textContent = 'Simulasi';
+          simBar.classList.remove('hidden');
+        } else {
+          simBar.classList.add('hidden');
+          dotEl.className = `dot ${room.online ? 'online' : 'error'}`;
+          connEl.textContent = room.online
+            ? (room.rssi !== null ? `Online (${room.rssi} dBm)` : 'Online')
+            : 'Offline';
+        }
+
+        gpioRadar.textContent = `GPIO 22: ${room.presence ? 'HIGH' : 'LOW'}`;
+        occVal.textContent = room.presence ? 'Ada Orang' : 'Kosong';
+        occVal.className = `box-val ${room.presence ? 'val-amber' : 'val-green'}`;
+
+        gpioRelay.textContent = `GPIO 23: ${room.lamp ? 'LOW' : 'HIGH'}`;
+        lampVal.textContent = room.lamp ? 'Menyala (ON)' : 'Mati (OFF)';
+        lampVal.className = `box-val ${room.lamp ? 'val-amber' : 'val-muted'}`;
+
+        btnAuto.className = room.mode === 'AUTO' ? 'active' : '';
+        btnOn.className = room.mode === 'ON' ? 'active' : '';
+        btnOff.className = room.mode === 'OFF' ? 'active' : '';
+
+        durEl.textContent = formatDuration(Date.now() - (room.stateSince || Date.now()));
+        detEl.textContent = `${room.detections || 0}x`;
+      }
+
+      /* ---- Sinkronisasi dengan Server (bukan langsung ke ESP32) ---- */
+      async function fetchAndUpdate() {
+        try {
+          const res = await fetch('/state');
+          if (!res.ok) return;
+          const serverRooms = await res.json();
+
+          // Deteksi perubahan untuk log aktivitas
+          if (initialized) {
+            for (const room of serverRooms) {
+              const prev = prevStates[room.id];
+              if (prev) {
+                if (room.presence !== prev.presence) {
+                  addLog(room, `Sensor: Ruangan ${room.presence ? 'terdeteksi ada orang' : 'kembali kosong'}`);
+                }
+                if (room.mode !== prev.mode) {
+                  addLog(room, `Mode diubah ke ${room.mode}`);
+                }
+              }
+            }
+          }
+
+          // Simpan state sebelumnya untuk perbandingan
+          for (const room of serverRooms) {
+            prevStates[room.id] = { presence: room.presence, lamp: room.lamp, mode: room.mode };
+          }
+
+          // Update rooms dan render
+          const prevIds = state.rooms.map(r => r.id).sort().join(',');
+          const newIds = serverRooms.map(r => r.id).sort().join(',');
+          state.rooms = serverRooms;
+
+          if (prevIds !== newIds || !initialized) {
+            renderAllRooms();
+          } else {
+            state.rooms.forEach(r => updateRoomCardDOM(r));
+          }
+          initialized = true;
+        } catch (e) {}
+      }
+
+      // --- Event Handlers ---
+      el.tabBtnMonitor.addEventListener('click', () => {
+        el.tabBtnMonitor.classList.add('active');
+        el.tabBtnGuide.classList.remove('active');
+        el.viewMonitor.classList.remove('hidden');
+        el.viewGuide.classList.add('hidden');
+      });
+      el.tabBtnGuide.addEventListener('click', () => {
+        el.tabBtnGuide.classList.add('active');
+        el.tabBtnMonitor.classList.remove('active');
+        el.viewGuide.classList.remove('hidden');
+        el.viewMonitor.classList.add('hidden');
+      });
+
+      el.addRoomForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = el.inputRoomName.value.trim();
+        const ip = el.inputRoomIp.value.trim();
+        const source = el.inputRoomSource.value;
+        if (!name || !ip) return;
+        try {
+          const res = await fetch('/rooms/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, ip, source })
+          });
+          if (res.ok) {
+            const newRoom = await res.json();
+            addLog(newRoom, 'Ruangan ditambahkan ke dashboard');
+          }
+        } catch (err) {}
+        el.inputRoomName.value = '';
+        el.inputRoomIp.value = '';
+        await fetchAndUpdate();
+      });
+
+      el.roomsContainer.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const action = btn.getAttribute('data-action');
+        const id = btn.getAttribute('data-id');
+        const room = state.rooms.find(r => r.id === id);
+        if (!room) return;
+
+        if (action === 'delete') {
+          await fetch('/rooms/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+          });
+          addLog(room, 'Ruangan dihapus');
+          delete prevStates[id];
+          await fetchAndUpdate();
+        } else if (action === 'edit-ip') {
+          const newName = prompt('Nama Ruangan:', room.name);
+          if (newName === null) return;
+          const newIp = prompt('IP Address ESP32:', room.ip);
+          if (newIp === null) return;
+          await fetch('/rooms/edit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, name: newName.trim() || room.name, ip: newIp.trim() || room.ip })
+          });
+          await fetchAndUpdate();
+        } else if (action === 'mode') {
+          const mode = btn.getAttribute('data-mode');
+          await fetch('/control', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, mode })
+          });
+          await fetchAndUpdate();
+        } else if (action === 'sim-high') {
+          await fetch('/sim', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, presence: true })
+          });
+          await fetchAndUpdate();
+        } else if (action === 'sim-low') {
+          await fetch('/sim', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, presence: false })
+          });
+          await fetchAndUpdate();
+        }
+      });
+
+      el.roomsContainer.addEventListener('change', async (e) => {
+        const sel = e.target.closest('select[data-action="source"]');
+        if (!sel) return;
+        const id = sel.getAttribute('data-id');
+        await fetch('/rooms/edit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, source: sel.value })
+        });
+        await fetchAndUpdate();
+      });
+
+      el.btnClearLog.addEventListener('click', () => {
+        state.logs = [];
+        renderLogs();
+      });
+
+      el.btnCopyIno.addEventListener('click', () => {
+        const rawCode = el.inoCodeBlock.innerText;
+        navigator.clipboard.writeText(rawCode).then(() => {
+          const orig = el.btnCopyIno.textContent;
+          el.btnCopyIno.textContent = 'Tersalin!';
+          setTimeout(() => { el.btnCopyIno.textContent = orig; }, 1500);
+        });
+      });
+
+      // Init: fetch dari server, bukan localStorage
+      fetchAndUpdate();
+      setInterval(fetchAndUpdate, 1000);
+    })();
+
+  </script>
+</body>
+</html>
